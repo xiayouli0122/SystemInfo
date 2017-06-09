@@ -22,6 +22,14 @@ import java.net.SocketException;
 import java.util.Arrays;
 import java.util.Enumeration;
 
+/**
+ * IMEI
+ * MAC
+ * 手机型号
+ * 系统版本
+ * IP
+ * 地理位置
+ */
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "Yuri";

@@ -73,6 +73,9 @@ public class MainActivity extends AppCompatActivity {
         String release = Build.VERSION.RELEASE;
         Log.d(TAG, "release version: " + release);
 
+        int sdk = Build.VERSION.SDK_INT;
+        Log.d(TAG, "SDK: " + sdk);
+
         //在wifi未开启状态下，仍然可以获取MAC地址，但是IP地址必须在已连接状态下否则为0
         String ip = null;
         WifiManager wifiMgr = (WifiManager)getApplicationContext().getSystemService(Context.WIFI_SERVICE);

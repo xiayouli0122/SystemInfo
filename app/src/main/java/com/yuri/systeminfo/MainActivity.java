@@ -3,6 +3,7 @@ package com.yuri.systeminfo;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
@@ -13,14 +14,20 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.telephony.TelephonyManager;
 import android.util.Log;
+import android.widget.TextView;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.LineNumberReader;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.Arrays;
 import java.util.Enumeration;
+import java.util.List;
 
 /**
  * IMEI
@@ -34,11 +41,14 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "Yuri";
 
+    TextView mTextView;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        mTextView  = (TextView) findViewById(R.id.text);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
@@ -51,7 +61,100 @@ public class MainActivity extends AppCompatActivity {
             getInfo();
         }
 
+        setProxy();
 
+    }
+
+
+    private void setProxy() {
+//        String host = "183.163.145.21";
+//        String host = "101.86.86.101";
+        String host = "122.112.247.8";
+        int port = 8118;
+        WifiManager wifiManager =(WifiManager)getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+        if (!wifiManager.isWifiEnabled()) {
+            return;
+        }
+        List<WifiConfiguration> configurationList = wifiManager.getConfiguredNetworks();
+        WifiConfiguration configuration = null;
+        int cur = wifiManager.getConnectionInfo().getNetworkId();
+        for (int i = 0; i < configurationList.size(); ++i) {
+            WifiConfiguration wifiConfiguration = configurationList.get(i);
+            if (wifiConfiguration.networkId == cur) {
+                configuration = wifiConfiguration;
+            }
+        }
+
+        if (configuration == null) {
+            Log.d(TAG, "configuration is null ");
+            mTextView.setText("configuration is null ");
+            return;
+        }
+
+        //get the link properties from the wifi configuration
+        try {
+            Object linkProperties = getFieldObject(configuration, "linkProperties");
+            if (linkProperties == null) {
+                Log.d(TAG, "linkProperties is null ");
+                mTextView.setText("linkProperties is null ");
+                return;
+            }
+
+            //获取类 LinkProperties的setHttpProxy方法
+            Class<?> proxyPropertiesClass = Class.forName("android.net.ProxyProperties");
+            Class<?>[] setHttpProxyParams = new Class[1];
+            setHttpProxyParams[0] = proxyPropertiesClass;
+            Class<?> lpClass = Class.forName("android.net.LinkProperties");
+
+            Method setHttpProxy = lpClass.getDeclaredMethod("setHttpProxy",setHttpProxyParams);setHttpProxy.setAccessible(true);
+
+            // 获取类 ProxyProperties的构造函数
+            Constructor<?> proxyPropertiesCtor = proxyPropertiesClass.getConstructor(String.class,int.class, String.class);
+            // 实例化类ProxyProperties
+            Object proxySettings =proxyPropertiesCtor.newInstance(host, port, null);
+            //pass the new object to setHttpProxy
+            Object[] params = new Object[1];
+            params[0] = proxySettings;
+            setHttpProxy.invoke(linkProperties, params);
+            setEnumField(configuration, "STATIC", "proxySettings");
+
+            //save the settings
+            wifiManager.updateNetwork(configuration);
+            wifiManager.disconnect();
+            wifiManager.reconnect();
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+            mTextView.setText(e.getMessage());
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+            mTextView.setText(e.getMessage());
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+            mTextView.setText(e.getMessage());
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+            mTextView.setText(e.getMessage());
+        } catch (InstantiationException e) {
+            e.printStackTrace();
+            mTextView.setText(e.getMessage());
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+            mTextView.setText(e.getMessage());
+        }
+
+
+    }
+
+    public void setEnumField(Object obj, String value, String name)throws SecurityException, NoSuchFieldException,IllegalArgumentException, IllegalAccessException{
+        Field f = obj.getClass().getField(name);
+        f.set(obj, Enum.valueOf((Class<Enum>) f.getType(), value));
+    }
+
+    // getField只能获取类的public 字段.
+    public Object getFieldObject(Object obj, String name)throws SecurityException, NoSuchFieldException, IllegalArgumentException, IllegalAccessException{
+        Field f =
+                obj.getClass().getField(name);
+        Object out = f.get(obj); return out;
     }
 
     private void getInfo() {

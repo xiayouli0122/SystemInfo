@@ -2,7 +2,9 @@ package com.yuri.systeminfo;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -14,6 +16,8 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.telephony.TelephonyManager;
 import android.util.Log;
+import android.view.View;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import java.io.IOException;
@@ -41,6 +45,9 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "Yuri";
 
+    EditText mIpEditText;
+    EditText mPortEditText;
+
     TextView mTextView;
 
     @Override
@@ -48,7 +55,10 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mTextView  = (TextView) findViewById(R.id.text);
+        mTextView = (TextView) findViewById(R.id.text);
+
+        mIpEditText = (EditText) findViewById(R.id.et_ip);
+        mPortEditText = (EditText) findViewById(R.id.et_port);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
@@ -61,16 +71,38 @@ public class MainActivity extends AppCompatActivity {
             getInfo();
         }
 
-        setProxy();
+        findViewById(R.id.btn_save).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                setProxy();
+            }
+        });
+
+        findViewById(R.id.btn_open).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String baseUrl = "https://www.baidu.com";
+                String qudao = "/from=844b";
+                String keyword = "/s?word=ip";
+                String guanggao = "&sa=tb&ts=0&t_kt=0&ie=utf-8&rsv_t=c2eaKwziCjrrEC9Ar4vQxouAgsELwXwjEBY1YwzHvpQQrl%252Bh9Jp9&rsv_pq=14318853138871529188";
+//                String guanggao = "&sa=tb&ts=6651294&t_kt=90&ie=utf-8&rsv_t=130bsjAIWB%252F%252F3HE40pdZEVGZpswrvZkGCSYnrYh9I0e7z%252BIUdfpAnSnvEg&ms=1&rsv_pq=7130147884630772087&ss=100&t_it=1&rqlang=zh&rsv_sug4=6814&inputT=5896&oq=阿里收购联华超市";
+                Intent intent = new Intent();
+                String url = baseUrl + qudao + keyword + guanggao;
+                Log.d(TAG, "===url: " + url);
+                intent.setData(Uri.parse(url));
+                intent.setAction(Intent.ACTION_VIEW);
+                startActivity(intent);
+            }
+        });
 
     }
 
 
     private void setProxy() {
-//        String host = "183.163.145.21";
-//        String host = "101.86.86.101";
-        String host = "122.112.247.8";
-        int port = 8118;
+        String host = mIpEditText.getText().toString().trim();
+        String portStr = mPortEditText.getText().toString().trim();
+        int port = Integer.valueOf(portStr);
+        Log.d(TAG, "host: " + host + ",post:" + port);
         WifiManager wifiManager =(WifiManager)getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         if (!wifiManager.isWifiEnabled()) {
             return;
@@ -96,7 +128,7 @@ public class MainActivity extends AppCompatActivity {
             Object linkProperties = getFieldObject(configuration, "linkProperties");
             if (linkProperties == null) {
                 Log.d(TAG, "linkProperties is null ");
-                mTextView.setText("linkProperties is null ");
+                mTextView.setText("linkProperties is null");
                 return;
             }
 
@@ -141,8 +173,6 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
             mTextView.setText(e.getMessage());
         }
-
-
     }
 
     public void setEnumField(Object obj, String value, String name)throws SecurityException, NoSuchFieldException,IllegalArgumentException, IllegalAccessException{
